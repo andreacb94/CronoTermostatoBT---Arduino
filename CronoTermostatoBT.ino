@@ -14,12 +14,35 @@ unsigned long old_time = 0;
 // Frangente di tempo da attendere prima di una nuovo controllo
 unsigned long delta_time = (30 * 60 * 1000); //30 minuti
 
+//Calendario base
+int YY = 2017;
+int MM = 11;
+int DD = 14;
+int hh = 00;
+int mm = 00;
+int ss = 00;
+
 //Variabili per la temperatura
 int temp_start = 18;
 int temp_limit = 10;
-int temp_stop = 22;
+int temp_stop = 21;
+
+//Variabile di comunicazione Bluetooth
+char data_bt = '0';
+
+//Variabile di stato
+// false = non configurato
+// true = configurato
+boolean state = false;
+
+String convert_data = "";
+
+int buffer_cont = 38;
 
 void setup() {
+
+  //Inizializzo la porta seriale per la comunicazione Bluetooth
+  Serial.begin(9600);
 
   //Inizializzo i pin
   pinMode(pin_boiler, OUTPUT);
@@ -35,16 +58,64 @@ void setup() {
 
 void loop() {
 
-  now = millis();
+  //Controllo se lo stato non è configurato
+  if(!state){
 
-  if( now >= (old_time + delta_time)){
+    //Controllo le è presente ancora qualcosa nel buffer seriale
+    if(Serial.available() > 0){
 
-    crono();
+      //Decremento il buffer
+      buffer_cont--;
 
-    old_time = now;
+      //Leggo il dato in arrivo dal bt e lo salvo in data
+      data_bt = Serial.read();
+      
+      //Serial.println("data_bt: " + data_bt);
+      
+      convert_data += data_bt;
+
+    }
+
+    //Una volta esaurito il buffer salvo i dati
+    if(cont<= 0){
+      
+      //Codifico l'input seriale
+      //00000000001111111111222222222233333333
+      //01234567890123456789012345678901234567
+      //{temp:18;10;21/DD:2017;11;14;00;00;00}
+
+      //Salvo i dati acquisendo le substrings
+      temp_start = convert_data.substring(6,8).toInt();
+      temp_limit = convert_data.substring(9,12).toInt();
+      temp_stop = convert_data.substring(12,14).toInt();
+      YY = convert_data.substring(18,22).toInt();
+      MM = convert_data.substring(23,25).toInt();
+      DD = convert_data.substring(26,28).toInt();
+      hh = convert_data.substring(29,31).toInt();
+      mm = convert_data.substring(32,34).toInt();
+      ss = convert_data.substring(35,37).toInt();
+
+      //Setto lo stato nella condizione di configurato
+      state = true;
+
+    }
     
   }
+
+  //Se lo stato è configurato, avvio il programma principale
+  else{
+    
+    now = millis();
   
+    if( now >= (old_time + delta_time)){
+  
+      crono();
+  
+      old_time = now;
+      
+    }
+    
+  }
 
 }
 
@@ -101,6 +172,6 @@ void temperature(int temp_min, int temp_max){
     }
     
   }
-  
+
 }
 
